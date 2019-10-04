@@ -1,0 +1,59 @@
+#version 150
+
+//Andrei Lins
+
+//from vertex shader
+in vec2 pass_textureCoords;
+in vec3 surfaceNormal;
+in vec3 toLightVector[7];
+in vec3 toCameraVector;
+
+out vec4 out_Color;
+
+//uniforms
+uniform sampler2D textureSampler;
+uniform vec3 lightColour[7];
+uniform vec3 attenuation[7];
+uniform float shineDamper;
+uniform float reflectivity;
+
+void main(void){
+
+	vec3 unitNormal = normalize(surfaceNormal);
+	vec3 unitVectorToCamera = normalize(toCameraVector);
+	
+	//sum of all the light sources
+	vec3 totalDiffuse = vec3(0.0);
+	vec3 totalSpecular = vec3(0.0);
+	
+	//run once for each light source
+	for(int i = 0; i<7; i++){
+		//get distance to the light source
+		float distance = length(toLightVector[i]);
+		//calculate attenuation factor
+		float attFactor = attenuation[i].x + (attenuation[i].y * distance) + (attenuation[i].z * distance * distance);
+		vec3 unitLightVector = normalize(toLightVector[i]);
+		float nDotl = dot(unitNormal, unitLightVector); // dot product between the two normals, result is how bright pixel should be
+		float brightness = max(nDotl,0.0); // make sure the value is between 0 and 1
+		vec3 lightDirection = -unitLightVector; //light direction is the opposite of the vector pointing towards the light
+		vec3 reflectedLightDirection = reflect(lightDirection,unitNormal);
+		float specularFactor = dot(reflectedLightDirection , unitVectorToCamera); //specular factor is how bright specular lighting will be
+		specularFactor = max(specularFactor, 0.2);
+		float dampedFactor = pow(specularFactor, shineDamper);
+		
+		//calculate totals using attenuation factor
+		totalDiffuse = totalDiffuse + (brightness * lightColour[i])/attFactor;
+		totalSpecular = totalSpecular + (dampedFactor * reflectivity * lightColour[i])/attFactor;
+	}
+	totalDiffuse = max(totalDiffuse, 0.2); //brightness never drops below 0.2 which gives us ambient lighting
+	
+	vec4 textureColour = texture(textureSampler, pass_textureCoords); //returns the colour of the pixel on the texture at the passed coordinates
+	
+	//test the alpha value of the texture for transparency to work
+	if (textureColour.a<0.5){
+		discard;
+	}
+	 
+	out_Color = vec4(totalDiffuse,1.0) * textureColour + vec4(totalSpecular, 1.0); //final lightning colour for pixel
+
+}

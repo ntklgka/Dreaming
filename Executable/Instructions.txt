@@ -1,0 +1,5 @@
+W,A,S,D - Move bunny
+
+SpaceBar - Jump
+
+Right click pressed and move mouse to move camera

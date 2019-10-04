@@ -1,0 +1,43 @@
+#version 150
+
+//Andrei Lins
+
+//attributes from VAO
+in vec3 position;
+in vec2 textureCoords;
+in vec3 normal;
+
+//to fragment shader
+out vec2 pass_textureCoords;
+out vec3 surfaceNormal;
+out vec3 toLightVector[7]; //number of ligths that can colour an entity at once
+out vec3 toCameraVector;
+
+//uniforms
+uniform mat4 transformationMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform vec3 lightPosition[7]; //multiple light sources
+uniform float useFakeLightning;
+
+void main(void){
+
+	vec4 worldPosition = transformationMatrix * vec4(position,1.0); //position changes based on transformation
+	gl_Position = projectionMatrix * viewMatrix * worldPosition;
+	pass_textureCoords = textureCoords; //pass the texture coordinates to the fragment shader
+	
+	vec3 actualNormal = normal;
+	
+	if(useFakeLightning > 0.5){ //if we should use fake lighting
+		actualNormal = vec3(0.0,1.0,0.0); //normal points up
+	}
+	
+	surfaceNormal = (transformationMatrix * vec4(actualNormal,0.0)).xyz;
+	
+	//calculate toLightVector for each of the light sources
+	for(int i = 0; i<7; i++){
+		toLightVector[i] = lightPosition[i] - worldPosition.xyz;
+	}
+	//We inverse the view matrix because it's the opposite of the cameras position. Then we turn it into a 4d vector
+	toCameraVector = (inverse(viewMatrix) * vec4(0.0,0.0,0.0,1.0)).xyz - worldPosition.xyz;
+}
